@@ -1,0 +1,64 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <semaphore.h>
+#define N 5 // number of philosophers
+sem_t forks[N];
+sem_t waiter;
+void *philosopher(void *arg) 
+{
+    int id = *(int*) arg;
+    int left_fork = id;
+    int right_fork = (id + 1) % N;
+    while (1) 
+    {
+        printf("Philosopher %d is thinking...\n", id);
+        // wait for waiter to allow access to forks
+        sem_wait(&waiter);
+        // wait for left fork
+        sem_wait(&forks[left_fork]);
+        printf("Philosopher %d picked up left fork.\n", id);
+        // wait for right fork
+        sem_wait(&forks[right_fork]);
+        printf("Philosopher %d picked up right fork.\n", id);
+        printf("Philosopher %d is eating...\n", id);
+        sleep(1);
+        // put down right fork
+        sem_post(&forks[right_fork]);
+        printf("Philosopher %d put down right fork.\n", id);
+        // put down left fork
+        sem_post(&forks[left_fork]);
+        printf("Philosopher %d put down left fork.\n", id);
+        // signal waiter that access to forks is available
+        sem_post(&waiter);
+    }
+}
+int main() 
+{
+    pthread_t threads[N];
+    int ids[N];
+    // initialize semaphores
+    sem_init(&waiter, 0, N-1);
+    for (int i = 0; i < N; i++) 
+    {
+        sem_init(&forks[i], 0, 1);
+        ids[i] = i;
+    }
+    // create philosopher threads
+    for (int i = 0; i < N; i++) 
+    {
+        pthread_create(&threads[i], NULL, philosopher, &ids[i]);
+    }
+    // join philosopher threads
+    for (int i = 0; i < N; i++) 
+    {
+        pthread_join(threads[i], NULL);
+    }
+    // destroy semaphores
+    sem_destroy(&waiter);
+    for (int i = 0; i < N; i++) 
+    {
+        sem_destroy(&forks[i]);
+    }
+    return 0;
+}
